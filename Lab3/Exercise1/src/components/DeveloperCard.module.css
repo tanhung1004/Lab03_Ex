@@ -195,24 +195,75 @@
   font-weight: 600;
 }
 
-/* Responsive */
+
+/* Task 1.7 - Mobile responsive contract */
 @media (max-width: 375px) {
+  .card {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 22px;
+  }
+
   .header {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding: 125px 20px 24px;
+  }
+
+  .header::before {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 145px;
+    border-radius: 18px;
+  }
+
+  .coverLabel {
+    top: 25px;
+    right: 22px;
+    font-size: 11px;
+    padding: 7px 11px;
+  }
+
+  .avatar,
+  .avatarFallback {
+    width: 90px;
+    height: 90px;
+    margin-left: 4px;
   }
 
   .name {
     font-size: 23px;
+    letter-spacing: -0.4px;
+  }
+
+  .role {
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
   }
 
   .infoSection {
-    margin-right: 20px;
-    margin-left: 20px;
+    margin: 0 20px;
+    padding: 20px 0;
+  }
+
+  .infoList {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    column-gap: 12px;
   }
 
   .skillsSection {
-    padding-right: 20px;
-    padding-left: 20px;
+    padding: 22px 20px 26px;
+  }
+
+  .skillsList {
+    gap: 8px;
+  }
+
+  .skillsList li {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    padding: 8px 11px;
+    font-size: 11px;
   }
 }
