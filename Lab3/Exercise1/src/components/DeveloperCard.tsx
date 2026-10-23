@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import SkillBadge from "./SkillBadge";
+import styles from "./DeveloperCard.module.css";
 
-// Developer data model
 type Developer = {
   name: string;
   gamerTag: string;
@@ -20,12 +20,9 @@ type DeveloperCardProps = {
 export default function DeveloperCard({
   developer,
 }: DeveloperCardProps) {
-  // Remember the image URL that failed to load
-  const [failedAvatarUrl, setFailedAvatarUrl] = useState<string | null>(
-    null
-  );
+  const [failedAvatarUrl, setFailedAvatarUrl] =
+    useState<string | null>(null);
 
-  // Generate initials from developer's name
   const initials = developer.name
     .trim()
     .split(/\s+/)
@@ -33,30 +30,35 @@ export default function DeveloperCard({
     .map((word) => word.charAt(0).toUpperCase())
     .join("");
 
-  // Avatar URL will be provided later
   const avatarUrl = developer.avatarUrl?.trim() ?? "";
 
-  // Only accept HTTPS image URLs
   const isValidAvatar = avatarUrl.startsWith("https://");
 
-  // Show initials if the image is missing or failed
   const showAvatar =
     isValidAvatar && failedAvatarUrl !== avatarUrl;
 
   return (
-    <article aria-label={`${developer.name}'s profile`}>
-      <header>
-        {/* Avatar with fallback */}
+    <article
+      className={styles.card}
+      aria-label={`${developer.name}'s profile`}
+    >
+      <header className={styles.header}>
+        <span className={styles.coverLabel}>
+          ✦ Developer / Gamer
+        </span>
+
         {showAvatar ? (
           <img
+            className={styles.avatar}
             src={avatarUrl}
             alt={`${developer.name}'s avatar`}
-            width={120}
-            height={120}
+            width={104}
+            height={104}
             onError={() => setFailedAvatarUrl(avatarUrl)}
           />
         ) : (
           <span
+            className={styles.avatarFallback}
             role="img"
             aria-label={`${developer.name}'s initials`}
           >
@@ -64,18 +66,21 @@ export default function DeveloperCard({
           </span>
         )}
 
-        {/* Developer identity */}
-        <hgroup>
-          <h2>{developer.name}</h2>
-          <p>{developer.role}</p>
+        <hgroup className={styles.identity}>
+          <h2 className={styles.name}>{developer.name}</h2>
+          <p className={styles.role}>{developer.role}</p>
         </hgroup>
 
-        <p>@{developer.gamerTag}</p>
+        <p className={styles.gamerTag}>
+          @{developer.gamerTag}
+        </p>
       </header>
 
-      {/* Developer information */}
-      <section aria-label="Developer information">
-        <dl>
+      <section
+        className={styles.infoSection}
+        aria-label="Developer information"
+      >
+        <dl className={styles.infoList}>
           <dt>Location</dt>
           <dd>{developer.location}</dd>
 
@@ -84,11 +89,15 @@ export default function DeveloperCard({
         </dl>
       </section>
 
-      {/* Technical skills */}
-      <section aria-label="Technical skills">
-        <h3>Skills</h3>
+      <section
+        className={styles.skillsSection}
+        aria-label="Technical skills"
+      >
+        <h3 className={styles.skillsTitle}>
+          Technical Skills
+        </h3>
 
-        <ul>
+        <ul className={styles.skillsList}>
           {developer.skills.map((skill) => (
             <SkillBadge key={skill} name={skill} />
           ))}
