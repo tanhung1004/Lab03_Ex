@@ -1,4 +1,3 @@
-
 import PubgMatchTelemetry from "./components/PubgMatchTelemetry";
 
 function App() {
