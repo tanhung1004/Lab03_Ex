@@ -1,11 +1,14 @@
 
 import { useEffect, useState } from "react";
+
 import {
   PUBG_VN_SQUADS,
   type PubgSquad,
 } from "../data/pubgSquads";
 
-// Four-state telemetry model
+import { fetchKraftonPubgTelemetry } from "../services/telemetry";
+
+// Four-state machine
 type TelemetryView =
   | { status: "IDLE" }
   | { status: "LOADING" }
@@ -13,52 +16,66 @@ type TelemetryView =
   | { status: "ERROR"; error: string };
 
 export default function PubgMatchTelemetry() {
-  // Currently selected squad
   const [squadId, setSquadId] = useState<string | null>(
     null
   );
 
-  // Current telemetry state
   const [view, setView] = useState<TelemetryView>({
     status: "IDLE",
   });
 
-  // Task 3.2: Simulated telemetry loading
+  // Fetch telemetry whenever the selected squad changes
   useEffect(() => {
     if (squadId === null) {
       return;
     }
 
-    const squad = PUBG_VN_SQUADS.find(
-      (item) => item.id === squadId
-    );
+    const controller = new AbortController();
 
-    if (!squad) {
-      return;
-    }
+    fetchKraftonPubgTelemetry(
+      squadId,
+      controller.signal
+    )
+      .then((data) => {
+        // Ignore stale responses
+        if (controller.signal.aborted) {
+          return;
+        }
 
-    // Request started
-    const loadingTimer = setTimeout(() => {
-      setView({ status: "LOADING" });
-    }, 0);
+        setView({
+          status: "SUCCESS",
+          data,
+        });
+      })
+      .catch((error: unknown) => {
+        // An aborted request is not a network failure
+        if (controller.signal.aborted) {
+          return;
+        }
 
-    // Simulate a successful response
-    const responseTimer = setTimeout(() => {
-      setView({
-        status: "SUCCESS",
-        data: squad,
+        if (
+          error instanceof Error &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setView({
+          status: "ERROR",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Unknown telemetry error.",
+        });
       });
-    }, 800);
 
-    // Prevent old timers from updating the UI
+    // Cancel previous request when switching squads
     return () => {
-      clearTimeout(loadingTimer);
-      clearTimeout(responseTimer);
+      controller.abort();
     };
   }, [squadId]);
 
   function handleSelectSquad(id: string) {
-    // Immediately display loading state
     setView({ status: "LOADING" });
     setSquadId(id);
   }
@@ -74,9 +91,11 @@ export default function PubgMatchTelemetry() {
         PUBG Vietnam Series — Live Telemetry
       </h2>
 
-      <p>Select a squad to view live match statistics.</p>
+      <p>
+        Select a squad to view live match statistics.
+      </p>
 
-      {/* Squad selector */}
+      {/* Squad selection */}
       <nav aria-label="Select PUBG squad">
         {PUBG_VN_SQUADS.map((squad) => (
           <button
@@ -99,12 +118,17 @@ export default function PubgMatchTelemetry() {
 
       {/* IDLE */}
       {view.status === "IDLE" && (
-        <p>No squad selected. Choose a team to begin.</p>
+        <p>
+          No squad selected. Choose a team to begin.
+        </p>
       )}
 
       {/* LOADING */}
       {view.status === "LOADING" && (
-        <section aria-busy="true" aria-label="Loading telemetry">
+        <section
+          aria-busy="true"
+          aria-label="Loading telemetry"
+        >
           <p>Syncing PUBG telemetry...</p>
         </section>
       )}
@@ -136,9 +160,10 @@ export default function PubgMatchTelemetry() {
         </article>
       )}
 
-      {/* ERROR - Will be activated in Task 3.3 */}
+      {/* ERROR */}
       {view.status === "ERROR" && (
         <section role="alert">
+          <h3>Telemetry Connection Failed</h3>
           <p>{view.error}</p>
         </section>
       )}
