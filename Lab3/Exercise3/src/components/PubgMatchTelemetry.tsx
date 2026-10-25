@@ -1,14 +1,11 @@
 
 import { useEffect, useState } from "react";
-
 import {
   PUBG_VN_SQUADS,
   type PubgSquad,
 } from "../data/pubgSquads";
-
 import { fetchKraftonPubgTelemetry } from "../services/telemetry";
 
-// Four-state machine
 type TelemetryView =
   | { status: "IDLE" }
   | { status: "LOADING" }
@@ -16,31 +13,21 @@ type TelemetryView =
   | { status: "ERROR"; error: string };
 
 export default function PubgMatchTelemetry() {
-  const [squadId, setSquadId] = useState<string | null>(
-    null
-  );
+  const [squadId, setSquadId] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
 
   const [view, setView] = useState<TelemetryView>({
     status: "IDLE",
   });
 
-  // Fetch telemetry whenever the selected squad changes
   useEffect(() => {
-    if (squadId === null) {
-      return;
-    }
+    if (squadId === null) return;
 
     const controller = new AbortController();
 
-    fetchKraftonPubgTelemetry(
-      squadId,
-      controller.signal
-    )
+    fetchKraftonPubgTelemetry(squadId, controller.signal)
       .then((data) => {
-        // Ignore stale responses
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
         setView({
           status: "SUCCESS",
@@ -48,10 +35,8 @@ export default function PubgMatchTelemetry() {
         });
       })
       .catch((error: unknown) => {
-        // An aborted request is not a network failure
-        if (controller.signal.aborted) {
-          return;
-        }
+        // Canceled requests are not connection failures.
+        if (controller.signal.aborted) return;
 
         if (
           error instanceof Error &&
@@ -65,19 +50,30 @@ export default function PubgMatchTelemetry() {
           error:
             error instanceof Error
               ? error.message
-              : "Unknown telemetry error.",
+              : "Unknown satellite telemetry error.",
         });
       });
 
-    // Cancel previous request when switching squads
-    return () => {
-      controller.abort();
-    };
-  }, [squadId]);
+    // Cancel obsolete requests on switch, retry, or unmount.
+    return () => controller.abort();
+  }, [squadId, retryCount]);
 
   function handleSelectSquad(id: string) {
     setView({ status: "LOADING" });
-    setSquadId(id);
+
+    if (id === squadId) {
+      // Selecting the same squad must start a new request.
+      setRetryCount((count) => count + 1);
+    } else {
+      setSquadId(id);
+    }
+  }
+
+  function handleRetry() {
+    if (squadId === null) return;
+
+    setView({ status: "LOADING" });
+    setRetryCount((count) => count + 1);
   }
 
   function handleClearSelection() {
@@ -85,88 +81,200 @@ export default function PubgMatchTelemetry() {
     setView({ status: "IDLE" });
   }
 
+  const selectedSquad = PUBG_VN_SQUADS.find(
+    (squad) => squad.id === squadId
+  );
+
   return (
-    <section aria-labelledby="telemetry-title">
-      <h2 id="telemetry-title">
-        PUBG Vietnam Series — Live Telemetry
-      </h2>
-
-      <p>
-        Select a squad to view live match statistics.
-      </p>
-
-      {/* Squad selection */}
-      <nav aria-label="Select PUBG squad">
-        {PUBG_VN_SQUADS.map((squad) => (
-          <button
-            key={squad.id}
-            type="button"
-            aria-pressed={squadId === squad.id}
-            onClick={() => handleSelectSquad(squad.id)}
-          >
-            {squad.name}
-          </button>
-        ))}
-
-        <button
-          type="button"
-          onClick={handleClearSelection}
-        >
-          Clear Selection
-        </button>
-      </nav>
-
-      {/* IDLE */}
-      {view.status === "IDLE" && (
-        <p>
-          No squad selected. Choose a team to begin.
+    <section className="telemetry" aria-labelledby="telemetry-title">
+      <header className="telemetry__header">
+        <p className="telemetry__eyebrow">
+          KRAFTON / PUBG VIETNAM SERIES
         </p>
-      )}
 
-      {/* LOADING */}
-      {view.status === "LOADING" && (
+        <h2 id="telemetry-title">
+          LIVE MATCH TELEMETRY
+        </h2>
+
+        <p className="telemetry__description">
+          Satellite-powered squad intelligence. Select a team
+          to sync live match statistics.
+        </p>
+      </header>
+
+      <div className="telemetry__workspace">
         <section
-          aria-busy="true"
-          aria-label="Loading telemetry"
+          className="squad-panel"
+          aria-labelledby="squad-selector-title"
         >
-          <p>Syncing PUBG telemetry...</p>
+          <h3 id="squad-selector-title">SELECT YOUR SQUAD</h3>
+
+          <div className="squad-list">
+            {PUBG_VN_SQUADS.map((squad) => (
+              <button
+                key={squad.id}
+                type="button"
+                className={`squad-button ${
+                  squadId === squad.id ? "is-active" : ""
+                }`}
+                aria-pressed={squadId === squad.id}
+                onClick={() => handleSelectSquad(squad.id)}
+              >
+                <span className="squad-button__code">
+                  {squad.id.toUpperCase()}
+                </span>
+
+                <span className="squad-button__name">
+                  {squad.name}
+                </span>
+
+                <span aria-hidden="true">›</span>
+              </button>
+            ))}
+          </div>
+
+          <button
+            className="clear-button"
+            type="button"
+            onClick={handleClearSelection}
+          >
+            CLEAR SELECTION
+          </button>
+
+          <p className="squad-panel__note">
+            Simulated telemetry • 35% satellite packet loss
+          </p>
         </section>
-      )}
 
-      {/* SUCCESS */}
-      {view.status === "SUCCESS" && (
-        <article aria-live="polite">
-          <h3>{view.data.name}</h3>
+        <section
+          className="telemetry-panel"
+          aria-label="Squad telemetry results"
+          aria-busy={view.status === "LOADING"}
+        >
+          <div className="telemetry-panel__top">
+            <span className="panel-label">
+              SATELLITE / {selectedSquad?.id.toUpperCase() ?? "OFFLINE"}
+            </span>
 
-          <dl>
-            <dt>Map</dt>
-            <dd>{view.data.map}</dd>
+            <span
+              className={`status-pill status-pill--${view.status.toLowerCase()}`}
+            >
+              <span className="status-dot" aria-hidden="true" />
+              {view.status}
+            </span>
+          </div>
 
-            <dt>Phase</dt>
-            <dd>{view.data.phase}</dd>
+          <div className="telemetry-panel__content">
+            {view.status === "IDLE" && (
+              <div className="idle-state">
+                <span className="state-symbol" aria-hidden="true">
+                  ◎
+                </span>
+                <h3>AWAITING SQUAD SELECTION</h3>
+                <p>
+                  Select CES, TE, or GE to establish a
+                  satellite telemetry connection.
+                </p>
+              </div>
+            )}
 
-            <dt>Alive</dt>
-            <dd>{view.data.alive}</dd>
+            {view.status === "LOADING" && (
+              <div
+                className="blue-zone-skeleton"
+                role="status"
+                aria-label="Synchronizing PUBG telemetry"
+              >
+                <div className="skeleton-heading">
+                  <span className="skeleton-pulse" aria-hidden="true" />
+                  <span>SYNCING BLUE ZONE TELEMETRY...</span>
+                </div>
 
-            <dt>Kills</dt>
-            <dd>{view.data.kills}</dd>
+                <div
+                  className="skeleton-line skeleton-line--wide"
+                  aria-hidden="true"
+                />
+                <div
+                  className="skeleton-line skeleton-line--medium"
+                  aria-hidden="true"
+                />
 
-            <dt>WWCD Probability</dt>
-            <dd>{view.data.wwcdProb}</dd>
+                <div className="skeleton-grid" aria-hidden="true">
+                  <div className="skeleton-tile" />
+                  <div className="skeleton-tile" />
+                  <div className="skeleton-tile" />
+                </div>
 
-            <dt>Status</dt>
-            <dd>{view.data.status}</dd>
-          </dl>
-        </article>
-      )}
+                <span className="skeleton-caption">
+                  Establishing secure satellite uplink
+                </span>
+              </div>
+            )}
 
-      {/* ERROR */}
-      {view.status === "ERROR" && (
-        <section role="alert">
-          <h3>Telemetry Connection Failed</h3>
-          <p>{view.error}</p>
+            {view.status === "SUCCESS" && (
+              <article className="success-state">
+                <div className="squad-info">
+                  <p className="success-state__label">
+                    SQUAD CONNECTION ESTABLISHED
+                  </p>
+                  <h3>{view.data.name}</h3>
+                  <p className="squad-status">{view.data.status}</p>
+                </div>
+
+                <dl className="stats-grid">
+                  <div className="stat-card">
+                    <dt>MAP</dt>
+                    <dd>{view.data.map}</dd>
+                  </div>
+
+                  <div className="stat-card">
+                    <dt>ZONE PHASE</dt>
+                    <dd>{view.data.phase}</dd>
+                  </div>
+
+                  <div className="stat-card">
+                    <dt>ALIVE</dt>
+                    <dd>{view.data.alive}</dd>
+                  </div>
+
+                  <div className="stat-card">
+                    <dt>KILLS</dt>
+                    <dd>{view.data.kills}</dd>
+                  </div>
+
+                  <div className="stat-card stat-card--highlight">
+                    <dt>WWCD PROBABILITY</dt>
+                    <dd>{view.data.wwcdProb}</dd>
+                  </div>
+                </dl>
+              </article>
+            )}
+
+            {view.status === "ERROR" && (
+              <div className="error-state" role="alert">
+                <span className="state-symbol" aria-hidden="true">
+                  ⚠
+                </span>
+
+                <h3>SATELLITE CONNECTION LOST</h3>
+
+                <p>{view.error}</p>
+
+                <button
+                  type="button"
+                  className="retry-button"
+                  onClick={handleRetry}
+                >
+                  ⟳ RECONNECT SATELLITE
+                </button>
+
+                <p className="error-state__hint">
+                  Connection may recover on the next attempt.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
-      )}
+      </div>
     </section>
   );
 }
