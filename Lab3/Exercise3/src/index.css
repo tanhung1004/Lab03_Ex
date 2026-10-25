@@ -1,0 +1,17 @@
+
+body {
+  margin: 0;
+  min-height: 100vh;
+
+  background-image:
+    linear-gradient(
+      rgba(5, 12, 24, 0.70),
+      rgba(5, 12, 24, 0.85)
+    ),
+    url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSOVjV-V0p51ZcqFvOGGDilffqABHRJ9xtfXd_Cjp7fFg&s=10");
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
